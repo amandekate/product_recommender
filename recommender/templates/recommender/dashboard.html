@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Analytics Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 500px; /* Increased height */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .chart-container h4 {
+            margin-bottom: 10px;
+            font-size: 18px;
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .chart-container canvas {
+            max-height: 380px; 
+        }
+
+        @media (min-width: 1200px) {
+            .chart-container {
+                height: 550px; 
+            }
+            .chart-container canvas {
+                max-height: 420px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 420px;
+            }
+            .chart-container canvas {
+                max-height: 320px;
+            }
+        }
+
+        .dashboard-header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid px-4 ">
+        <div class="dashboard-header">
+            <h1>Product Analytics Dashboard</h1>
+            <p class="lead">Real-time product performance insights</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Frequently Bought Together</h4>
+                    <canvas id="pairChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Product Category Distribution</h4>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Sales Trend (Last 30 Days)</h4>
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Top Selling Products</h4>
+                    <canvas id="topProductsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chartConfig = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 15,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: { enabled: true, padding: 12 }
+            }
+        };
+
+        function showLoading(chartId) {
+            const canvas = document.getElementById(chartId);
+            const ctx = canvas.getContext('2d');
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
+        }
+
+        ['pairChart', 'categoryChart', 'salesChart', 'topProductsChart'].forEach(showLoading);
+
+        Promise.all([
+            fetch('/api/chart-data/'),
+            fetch('/api/category-distribution/'),
+            fetch('/api/sales-trend/'),
+            fetch('/api/top-products/')
+        ]).then(responses => Promise.all(responses.map(r => r.json())))
+        .then(([pairData, categoryData, salesData, topProductsData]) => {
+            new Chart(document.getElementById('pairChart'), {
+                type: 'bar',
+                data: {
+                    labels: pairData.labels,
+                    datasets: [{
+                        label: 'Purchase Frequency',
+                        data: pairData.values,
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    scales: {
+                        x: {
+                            ticks: { maxRotation: 45, minRotation: 45, font: { size: 12 }, padding: 8 }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('categoryChart'), {
+                type: 'pie',
+                data: {
+                    labels: categoryData.labels,
+                    datasets: [{
+                        data: categoryData.values,
+                        backgroundColor: ['#e74c3c', '#2ecc71', '#9b59b6', '#f1c40f', '#1abc9c', '#34495e']
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: { position: 'right', labels: { font: { size: 12 }, padding: 15 } }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('salesChart'), {
+                type: 'line',
+                data: {
+                    labels: salesData.labels,
+                    datasets: [{
+                        label: 'Orders per Day',
+                        data: salesData.values,
+                        borderColor: '#27ae60',
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: 'rgba(46, 204, 113, 0.2)'
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    scales: {
+                        x: {
+                            ticks: { maxRotation: 45, minRotation: 45, font: { size: 12 }, padding: 8 }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('topProductsChart'), {
+                type: 'bar',
+                data: {
+                    labels: topProductsData.labels,
+                    datasets: [{
+                        label: 'Total Units Sold',
+                        data: topProductsData.values,
+                        backgroundColor: '#e67e22'
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    indexAxis: 'y',
+                    scales: {
+                        y: {
+                            ticks: {
+                                font: { size: 12 },
+                                padding: 8,
+                                callback: function(value) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.length > 30 ? label.substr(0, 27) + '...' : label;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: { title: function(context) { return context[0].label; } }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error loading dashboard data:', error);
+            document.querySelectorAll('canvas').forEach(canvas => {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#e74c3c';
+                ctx.textAlign = 'center';
+                ctx.fillText('Error loading data', canvas.width / 2, canvas.height / 2);
+            });
+        });
+    </script>
+</body>
+</html>
