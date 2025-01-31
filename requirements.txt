@@ -1,0 +1,15 @@
+# Core Dependencies
+Django==5.1.5
+djangorestframework==3.15.1
+
+# Environment Management
+python-dotenv==1.0.0
+
+# Production Server
+gunicorn==22.0.0
+
+# Database (PostgreSQL - optional)
+psycopg2-binary==2.9.9
+
+# Data Generation
+Faker==24.8.0
